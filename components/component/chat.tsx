@@ -1,8 +1,77 @@
+"use client";
+import { useEffect, useState } from "react";
+import { Socket, io } from "socket.io-client";
+import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
+import { Badge } from "../ui/badge";
+import UserList from "./userList";
+import Form from "./form";
+import Messages from "./messages";
+import { toast } from "../ui/use-toast";
+import { connect } from "http2";
 
 export function Chat() {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [clients, setClients] = useState<string[]>([]);
+  const [socketId, setSocketId] = useState("");
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [bearerKey, setBearerKey] = useState("");
+  const [clientMessages, setClientMessages] = useState<
+    { id: string; message: string; user: string }[]
+  >([]);
+
+  const connectToChat = (bearerKey: string) => {
+    if (bearerKey.trim().length <= 0)
+      return toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: "Bearer key is required.",
+      });
+
+    const socket = io("http://localhost:3001", {
+      extraHeaders: {
+        authentication: bearerKey,
+      },
+    });
+    setSocket(socket);
+
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false);
+    }, 3000);
+
+    socket.on("connect", () => {
+      setIsConnected(true);
+      setIsLoading(false);
+      if (socket.id) {
+        setSocketId(socket.id);
+      }
+      clearTimeout(timeoutId);
+    });
+    socket.on("disconnect", () => {
+      setIsConnected(false);
+    });
+    socket.on("clients-updated", (clients: string[]) => {
+      setClients(clients);
+    });
+
+    socket.on(
+      "message-from-server",
+      ({
+        message: { id, message },
+        user,
+      }: {
+        message: { id: string; message: string };
+        user: string;
+      }) => {
+        setClientMessages((prevMessages) => [
+          ...prevMessages,
+          { id, message, user },
+        ]);
+      }
+    );
+  };
   return (
     <div className="flex flex-col min-h-screen">
       <header className="bg-gray-900 dark:bg-gray-950 px-4 py-4 border-b dark:border-gray-700 flex items-center justify-between md:px-6">
@@ -11,10 +80,14 @@ export function Chat() {
             className="bg-gray-800 text-gray-50 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent w-full md:w-64 dark:focus:ring-gray-50"
             placeholder="Paste your bearer key here"
             type="text"
+            value={bearerKey}
+            onChange={(e) => setBearerKey(e.target.value)}
           />
           <Button
             className="px-4 py-2 rounded-md text-sm font-medium text-gray-50 hover:bg-gray-800 dark:hover:bg-gray-900"
             variant="outline"
+            type="button"
+            onClick={() => connectToChat(bearerKey)}
           >
             Connect
           </Button>
@@ -36,95 +109,31 @@ export function Chat() {
             <SignalIcon className="w-5 h-5" />
             <span className="sr-only">Notifications</span>
           </Button>
-          <Avatar className="h-8 w-8 md:h-10 md:w-10">
+          {isLoading ? (
+            <Badge variant="outline">
+              <span className="animate-pulse">Waiting for connection...</span>
+            </Badge>
+          ) : isConnected ? (
+            <Badge variant="default">Online</Badge>
+          ) : (
+            <Badge variant="destructive">Offline</Badge>
+          )}
+          {/* <Avatar className="h-8 w-8 md:h-10 md:w-10">
             <AvatarImage alt="@shadcn" src="/placeholder-avatar.jpg" />
             <AvatarFallback>JP</AvatarFallback>
-          </Avatar>
+          </Avatar> */}
         </div>
       </header>
       <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 p-4 md:p-6">
         <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-auto p-4 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 max-w-[75%]">
-                <p className="text-sm">Hey there! How's it going?</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  John Doe • 2:34 PM
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 justify-end">
-              <div className="bg-gray-900 text-white rounded-lg p-3 max-w-[75%] dark:bg-gray-500">
-                <p className="text-sm">Pretty good, thanks for asking!</p>
-                <p className="text-xs text-gray-300 mt-1">You • 2:35 PM</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 max-w-[75%]">
-                <p className="text-sm">
-                  Glad to hear it! Did you catch the game last night?
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  John Doe • 2:36 PM
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 justify-end">
-              <div className="bg-gray-900 text-white rounded-lg p-3 max-w-[75%] dark:bg-gray-500">
-                <p className="text-sm">No, I missed it. What happened?</p>
-                <p className="text-xs text-gray-300 mt-1">You • 2:37 PM</p>
-              </div>
-            </div>
-          </div>
-          <div className="border-t dark:border-gray-700 p-4">
-            <div className="flex items-center gap-2">
-              <Input
-                className="flex-1 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent dark:focus:ring-gray-50"
-                placeholder="Type your message..."
-                type="text"
-              />
-              <Button
-                className="px-4 py-2 rounded-md text-sm font-medium"
-                variant="default"
-              >
-                Send
-              </Button>
-            </div>
-          </div>
+          <Messages clientMessages={clientMessages} socketId={socketId} />
+          <Form
+            isConnected={isConnected}
+            socketId={socketId}
+            socket={socket!}
+          />
         </div>
-        <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm overflow-hidden">
-          <div className="border-b dark:border-gray-700 px-4 py-3 bg-gray-900 dark:bg-gray-950">
-            <h2 className="text-lg font-semibold text-gray-50">
-              Connected Users
-            </h2>
-          </div>
-          <div className="p-4 space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center">
-                <UserIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </div>
-              <p className="text-sm font-medium">John Doe</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center">
-                <UserIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </div>
-              <p className="text-sm font-medium">Jane Smith</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center">
-                <UserIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </div>
-              <p className="text-sm font-medium">Bob Johnson</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center">
-                <UserIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </div>
-              <p className="text-sm font-medium">Sarah Lee</p>
-            </div>
-          </div>
-        </div>
+        <UserList clients={clients} />
       </div>
     </div>
   );
@@ -169,26 +178,6 @@ function SignalIcon(props: any) {
       <path d="M12 20v-8" />
       <path d="M17 20V8" />
       <path d="M22 4v16" />
-    </svg>
-  );
-}
-
-function UserIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
     </svg>
   );
 }
