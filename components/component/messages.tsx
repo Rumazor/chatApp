@@ -7,7 +7,7 @@ type Props = {
 
 export default function Messages({ clientMessages, socketId }: Props) {
   return (
-    <div className="flex-1 overflow-auto p-4 space-y-4">
+    <div className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)] p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-200">
       {clientMessages.map((clientMessage, index) => (
         <div
           key={index}
