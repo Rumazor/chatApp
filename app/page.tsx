@@ -1,10 +1,10 @@
-import { Chat } from "@/components/component/chat";
+import { Login } from "@/app/login/login";
 import { Toaster } from "@/components/ui/toaster";
 
 export default function Home() {
   return (
     <main>
-      <Chat />
+      <Login />
       <Toaster />
     </main>
   );

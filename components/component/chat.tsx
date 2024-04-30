@@ -9,54 +9,63 @@ import UserList from "./userList";
 import Form from "./form";
 import Messages from "./messages";
 import { toast } from "../ui/use-toast";
-import { connect } from "http2";
 
-export function Chat() {
+export function Chat({ token }: { token: string | undefined }) {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [clients, setClients] = useState<string[]>([]);
   const [socketId, setSocketId] = useState("");
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [bearerKey, setBearerKey] = useState("");
+
   const [clientMessages, setClientMessages] = useState<
     { id: string; message: string; user: string }[]
   >([]);
 
   const connectToChat = (bearerKey: string) => {
-    if (bearerKey.trim().length <= 0)
-      return toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: "Bearer key is required.",
-      });
+    // if (bearerKey.trim().length <= 0)
+    //   return toast({
+    //     variant: "destructive",
+    //     title: "Uh oh! Something went wrong.",
+    //     description: "Bearer key is required.",
+    //   });
 
-    const socket = io("http://localhost:3001", {
-      extraHeaders: {
-        authentication: bearerKey,
-      },
-    });
-    setSocket(socket);
+    if (socket) {
+      socket.disconnect();
+    }
+
+    const newSocket = io(
+      "https://nestjs-practice-supabase-prisma.onrender.com",
+      {
+        extraHeaders: {
+          authentication: bearerKey,
+        },
+      }
+    );
+
+    setSocket(newSocket);
 
     const timeoutId = setTimeout(() => {
       setIsLoading(false);
     }, 3000);
 
-    socket.on("connect", () => {
+    newSocket.on("connect", () => {
       setIsConnected(true);
       setIsLoading(false);
-      if (socket.id) {
-        setSocketId(socket.id);
+      if (newSocket.id) {
+        setSocketId(newSocket.id);
       }
       clearTimeout(timeoutId);
     });
-    socket.on("disconnect", () => {
+
+    newSocket.on("disconnect", () => {
       setIsConnected(false);
     });
-    socket.on("clients-updated", (clients: string[]) => {
+
+    newSocket.on("clients-updated", (clients: string[]) => {
       setClients(clients);
     });
 
-    socket.on(
+    newSocket.on(
       "message-from-server",
       ({
         message: { id, message },
@@ -72,25 +81,31 @@ export function Chat() {
       }
     );
   };
+
+  useEffect(() => {
+    if (token) {
+      connectToChat(token);
+    }
+  }, [token]);
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="bg-gray-900 dark:bg-gray-950 px-4 py-4 border-b dark:border-gray-700 flex items-center justify-between md:px-6">
         <div className="flex items-center gap-3">
-          <Input
+          {/* <Input
             className="bg-gray-800 text-gray-50 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent w-full md:w-64 dark:focus:ring-gray-50"
             placeholder="Paste your bearer key here"
             type="text"
             value={bearerKey}
             onChange={(e) => setBearerKey(e.target.value)}
-          />
-          <Button
+          /> */}
+          {/* <Button
             className="px-4 py-2 rounded-md text-sm font-medium text-gray-50 hover:bg-gray-800 dark:hover:bg-gray-900"
             variant="outline"
             type="button"
-            onClick={() => connectToChat(bearerKey)}
           >
             Connect
-          </Button>
+          </Button> */}
         </div>
         <div className="flex items-center gap-3">
           <Button
