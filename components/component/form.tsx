@@ -24,6 +24,10 @@ export default function Form({ isConnected, socketId, socket }: Props) {
         description: "You are not connected to the server. Please try again.",
       });
 
+    if (message.trim().length <= 0) {
+      return;
+    }
+
     socket.emit("message-from-client", {
       id: socketId,
       message,
@@ -32,6 +36,8 @@ export default function Form({ isConnected, socketId, socket }: Props) {
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // handle emtpy message
+
     setMessage(event.target.value);
   };
 

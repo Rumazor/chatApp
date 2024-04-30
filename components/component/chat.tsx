@@ -78,6 +78,10 @@ export function Chat({ token }: { token: string | undefined }) {
           ...prevMessages,
           { id, message, user },
         ]);
+
+        const audio = new Audio("/soundNotification.mp3");
+        audio.volume = 0.6;
+        audio.play();
       }
     );
   };
@@ -140,7 +144,7 @@ export function Chat({ token }: { token: string | undefined }) {
         </div>
       </header>
       <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 p-4 md:p-6">
-        <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm overflow-hidden flex flex-col">
+        <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm overflow-hidden  h-[35.5rem] md:h-auto justify-between flex flex-col">
           <Messages clientMessages={clientMessages} socketId={socketId} />
           <Form
             isConnected={isConnected}

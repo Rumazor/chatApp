@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 type Props = {
   clientMessages: { id: string; message: string; user: string }[];
@@ -6,6 +6,13 @@ type Props = {
 };
 
 export default function Messages({ clientMessages, socketId }: Props) {
+  const endOfMessagesRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (endOfMessagesRef.current) {
+      endOfMessagesRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [clientMessages]);
+
   return (
     <div className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)] p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-200">
       {clientMessages.map((clientMessage, index) => (
@@ -35,6 +42,7 @@ export default function Messages({ clientMessages, socketId }: Props) {
           </div>
         </div>
       ))}
+      <div ref={endOfMessagesRef} />
     </div>
   );
 }
