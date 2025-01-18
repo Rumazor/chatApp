@@ -18,7 +18,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 export function AuthForms() {
   const { toast } = useToast();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<string>("login");
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -45,6 +45,7 @@ export function AuthForms() {
         description: "Your account has been created successfully",
       });
       setActiveTab("login");
+      setErrorMessage(null);
     }
     if (error) {
       setErrorMessage(error);
@@ -164,8 +165,12 @@ export function AuthForms() {
       </div>
 
       {errorMessage && (
-        <div className="bg-transparent border border-red-500 rounded-md p-4 max-w-sm text-red-400">
-          {errorMessage}
+        <div className="bg-transparent border normal-case border-red-500 rounded-md p-4 max-w-md text-red-400">
+          <ul>
+            {errorMessage.map((msg: string, index: number) => (
+              <li key={index}>- {msg}</li>
+            ))}
+          </ul>
         </div>
       )}
     </motion.div>
