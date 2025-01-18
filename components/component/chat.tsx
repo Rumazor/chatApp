@@ -1,133 +1,156 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Socket, io } from "socket.io-client";
-import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "../ui/badge";
-import UserList from "./userList";
-import Form from "./form";
-import Messages from "./messages";
-import { toast } from "../ui/use-toast";
 
-export function Chat({ token }: { token: string | undefined }) {
+import { useEffect, useState } from "react";
+import { io } from "socket.io-client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import { LogOut, Send, Users, X } from "lucide-react";
+import { logout } from "@/app/actions";
+
+interface Message {
+  id: string;
+  message: string;
+  user: string;
+  timestamp: string;
+}
+
+export default function ChatRoom({ token }: { token: string | undefined }) {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [clients, setClients] = useState<string[]>([]);
   const [socketId, setSocketId] = useState("");
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [socket, setSocket] = useState<any>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [newMessage, setNewMessage] = useState("");
+  const [clientMessages, setClientMessages] = useState<Message[]>([]);
+  console.log(clientMessages);
 
-  const [clientMessages, setClientMessages] = useState<
-    { id: string; message: string; user: string }[]
-  >([]);
-
-  const connectToChat = (bearerKey: string) => {
-    // if (bearerKey.trim().length <= 0)
-    //   return toast({
-    //     variant: "destructive",
-    //     title: "Uh oh! Something went wrong.",
-    //     description: "Bearer key is required.",
-    //   });
-
-    if (socket) {
-      socket.disconnect();
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newMessage.trim() && socket) {
+      socket.emit("message-from-client", {
+        message: newMessage,
+      });
+      setNewMessage("");
     }
-
-    const newSocket = io(
-      "https://nestjs-practice-supabase-prisma.onrender.com",
-      {
-        extraHeaders: {
-          authentication: bearerKey,
-        },
-      }
-    );
-
-    setSocket(newSocket);
-
-    const timeoutId = setTimeout(() => {
-      setIsLoading(false);
-    }, 3000);
-
-    newSocket.on("connect", () => {
-      setIsConnected(true);
-      setIsLoading(false);
-      if (newSocket.id) {
-        setSocketId(newSocket.id);
-      }
-      clearTimeout(timeoutId);
-    });
-
-    newSocket.on("disconnect", () => {
-      setIsConnected(false);
-    });
-
-    newSocket.on("clients-updated", (clients: string[]) => {
-      setClients(clients);
-    });
-
-    newSocket.on(
-      "message-from-server",
-      ({
-        message: { id, message },
-        user,
-      }: {
-        message: { id: string; message: string };
-        user: string;
-      }) => {
-        setClientMessages((prevMessages) => [
-          ...prevMessages,
-          { id, message, user },
-        ]);
-
-        const audio = new Audio("/soundNotification.mp3");
-        audio.volume = 0.6;
-        audio.play();
-      }
-    );
   };
 
   useEffect(() => {
-    if (token) {
-      connectToChat(token);
+    if (!token) return;
+
+    let newSocket: any = null;
+
+    try {
+      newSocket = io("https://nestjs-practice-supabase-prisma.onrender.com", {
+        extraHeaders: {
+          authentication: token,
+        },
+      });
+
+      setSocket(newSocket);
+
+      const timeoutId = setTimeout(() => {
+        setIsLoading(false);
+      }, 3000);
+
+      newSocket.on("connect", () => {
+        setIsConnected(true);
+        setIsLoading(false);
+        if (newSocket.id) {
+          setSocketId(newSocket.id);
+        }
+        clearTimeout(timeoutId);
+      });
+
+      newSocket.on("disconnect", () => {
+        setIsConnected(false);
+      });
+
+      newSocket.on("clients-updated", (updatedClients: string[]) => {
+        setClients(updatedClients);
+      });
+
+      newSocket.on(
+        "message-from-server",
+        ({
+          message: { id, message },
+          user,
+          timestamp,
+        }: {
+          message: { id: string; message: string };
+          user: string;
+          timestamp: string;
+        }) => {
+          setClientMessages((prevMessages) => [
+            ...prevMessages,
+            { id, message, user, timestamp },
+          ]);
+
+          const audio = new Audio("/soundNotification.mp3");
+          audio.volume = 0.6;
+          audio.play();
+        }
+      );
+    } catch (error) {
+      console.error("Socket connection error:", error);
+      setIsLoading(false);
+      setIsConnected(false);
     }
+
+    return () => {
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+    };
   }, [token]);
 
+  const UsersList = () => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Connected Users</h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <ScrollArea className="h-[calc(100vh-8rem)]">
+        {clients.map((client, index) => (
+          <div
+            key={index}
+            className="flex items-center space-x-2 mb-3 p-2 rounded hover:bg-[#1a1a1a] transition-colors"
+          >
+            <div className="relative">
+              <Avatar className="w-8 h-8">
+                <AvatarFallback>{client[0]?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#0a0a0a]"></span>
+            </div>
+            <span className="text-sm truncate">{client}</span>
+          </div>
+        ))}
+      </ScrollArea>
+    </div>
+  );
+
+  const handleLogout = async () => {
+    if (socket) {
+      socket.disconnect();
+    }
+    await logout();
+  };
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="bg-gray-900 dark:bg-gray-950 px-4 py-4 border-b dark:border-gray-700 flex items-center justify-between md:px-6">
+    <div className="flex flex-col h-screen bg-[#0a0a0a] text-white">
+      <div className="flex items-center justify-between p-4 border-b border-[#1a1a1a]">
+        <h1 className="text-xl font-bold">Chat Room</h1>
         <div className="flex items-center gap-3">
-          {/* <Input
-            className="bg-gray-800 text-gray-50 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent w-full md:w-64 dark:focus:ring-gray-50"
-            placeholder="Paste your bearer key here"
-            type="text"
-            value={bearerKey}
-            onChange={(e) => setBearerKey(e.target.value)}
-          /> */}
-          {/* <Button
-            className="px-4 py-2 rounded-md text-sm font-medium text-gray-50 hover:bg-gray-800 dark:hover:bg-gray-900"
-            variant="outline"
-            type="button"
-          >
-            Connect
-          </Button> */}
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            className="text-gray-50 hover:bg-gray-800 dark:hover:bg-gray-900 md:hidden"
-            size="icon"
-            variant="ghost"
-          >
-            <SettingsIcon className="w-5 h-5" />
-            <span className="sr-only">Settings</span>
-          </Button>
-          <Button
-            className="text-gray-50 hover:bg-gray-800 dark:hover:bg-gray-900 md:hidden"
-            size="icon"
-            variant="ghost"
-          >
-            <SignalIcon className="w-5 h-5" />
-            <span className="sr-only">Notifications</span>
-          </Button>
           {isLoading ? (
             <Badge variant="outline">
               <span className="animate-pulse">Waiting for connection...</span>
@@ -137,66 +160,107 @@ export function Chat({ token }: { token: string | undefined }) {
           ) : (
             <Badge variant="destructive">Offline</Badge>
           )}
-          {/* <Avatar className="h-8 w-8 md:h-10 md:w-10">
-            <AvatarImage alt="@shadcn" src="/placeholder-avatar.jpg" />
-            <AvatarFallback>JP</AvatarFallback>
-          </Avatar> */}
+          <form action={handleLogout}>
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon"
+              className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </form>
+          <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                aria-label="Toggle users sidebar"
+              >
+                <Users className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              className="w-80 sm:w-96 p-4 bg-[#0a0a0a] border-l border-[#1a1a1a]"
+            >
+              <UsersList />
+            </SheetContent>
+          </Sheet>
         </div>
-      </header>
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 p-4 md:p-6">
-        <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm overflow-hidden  h-[35.5rem] md:h-auto justify-between flex flex-col">
-          <Messages clientMessages={clientMessages} socketId={socketId} />
-          <Form
-            isConnected={isConnected}
-            socketId={socketId}
-            socket={socket!}
-          />
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 flex flex-col">
+          <ScrollArea className="flex-1 p-4">
+            {clientMessages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex items-start space-x-3 mb-4 ${
+                  message.id === socketId
+                    ? "flex-row-reverse space-x-reverse"
+                    : ""
+                }`}
+              >
+                <Avatar className="w-8 h-8 hidden sm:block">
+                  <AvatarFallback>
+                    {message.user[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div
+                  className={`flex flex-col flex-1 min-w-0 max-w-[75%] ${
+                    message.id === socketId ? "items-end" : ""
+                  }`}
+                >
+                  <div
+                    className={`rounded-lg p-3 ${
+                      message.id === socketId ? "bg-blue-600" : "bg-[#1a1a1a]"
+                    }`}
+                  >
+                    <span className=" font-medium text-xs truncate text-gray-300 mt-0 break-words">
+                      {message.id === socketId ? "You" : message.user}
+                    </span>
+                    <span className="text-xs ml-1 text-gray-400 shrink-0">
+                      {new Date(message.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    <p className="text-gray-200 break-words">
+                      {message.message}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </ScrollArea>
+
+          <div className="p-4 border-t border-[#1a1a1a]">
+            <form onSubmit={handleSendMessage} className="flex space-x-2">
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-1 bg-[#1a1a1a] border-0 focus-visible:ring-1 focus-visible:ring-gray-600 text-white placeholder:text-gray-400"
+                disabled={!isConnected}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                className="bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white shrink-0"
+                disabled={!isConnected}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </form>
+          </div>
         </div>
-        <UserList clients={clients} />
+
+        <div className="w-80 border-l border-[#1a1a1a] p-4 hidden lg:block">
+          <UsersList />
+        </div>
       </div>
     </div>
-  );
-}
-
-function SettingsIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function SignalIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 20h.01" />
-      <path d="M7 20v-4" />
-      <path d="M12 20v-8" />
-      <path d="M17 20V8" />
-      <path d="M22 4v16" />
-    </svg>
   );
 }

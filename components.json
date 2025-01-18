@@ -6,11 +6,16 @@
   "tailwind": {
     "config": "tailwind.config.ts",
     "css": "app/globals.css",
-    "baseColor": "gray",
-    "cssVariables": false
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
   },
   "aliases": {
+    "components": "@/components",
     "utils": "@/lib/utils",
-    "components": "@/components"
-  }
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide"
 }
