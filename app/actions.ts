@@ -29,9 +29,6 @@ export async function register(formData: FormData) {
 
   if (dataResponse.token) {
     cookies().set("token", dataResponse.token);
-
-    revalidatePath("/", "layout");
-    redirect("/");
   }
 
   // if (error) {
