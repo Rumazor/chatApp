@@ -15,14 +15,17 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { login, register } from "@/app/actions";
 import { useToast } from "@/components/ui/use-toast";
+import { ServerStartupAlert } from "./serverWakeUp";
 
 export function AuthForms() {
   const { toast } = useToast();
   const [errorMessage, setErrorMessage] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<string>("login");
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setLoading(true);
 
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
@@ -31,18 +34,20 @@ export function AuthForms() {
     if (error) {
       setErrorMessage(error);
     }
+    setLoading(false);
   };
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setLoading(true);
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
 
     const error = await register(formData);
     if (!error) {
       toast({
-        title: "Account created",
-        description: "Your account has been created successfully",
+        title: "Account Created",
+        description: "Your account has been created successfully.",
       });
       setActiveTab("login");
       setErrorMessage(null);
@@ -50,6 +55,7 @@ export function AuthForms() {
     if (error) {
       setErrorMessage(error);
     }
+    setLoading(false);
   };
 
   return (
@@ -60,37 +66,39 @@ export function AuthForms() {
       className="flex justify-center min-h-screen flex-col items-center space-y-4"
     >
       <div className="w-full max-w-md">
+        <ServerStartupAlert />
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
-            <TabsTrigger value="register">Registrarse</TabsTrigger>
+            <TabsTrigger value="login">Log In</TabsTrigger>
+            <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Iniciar sesión</CardTitle>
+                <CardTitle>Log In</CardTitle>
                 <CardDescription>
-                  Ingresa tus credenciales para acceder a tu cuenta.
+                  Enter your credentials to access your account.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <form onSubmit={handleLogin}>
                   <div className="space-y-2">
                     <Label htmlFor="login-email" className="text-gray-400">
-                      Correo electrónico
+                      Email
                     </Label>
                     <Input
                       id="login-email"
                       name="email"
                       type="email"
-                      placeholder="tu@email.com"
+                      placeholder="your@email.com"
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password" className="text-gray-400">
-                      Contraseña
+                      Password
                     </Label>
                     <Input
                       id="login-password"
@@ -99,8 +107,12 @@ export function AuthForms() {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full mt-4">
-                    Iniciar sesión
+                  <Button
+                    type="submit"
+                    className="w-full mt-4"
+                    disabled={loading}
+                  >
+                    {loading ? "Loading..." : "Log In"}
                   </Button>
                 </form>
               </CardContent>
@@ -110,16 +122,16 @@ export function AuthForms() {
           <TabsContent value="register">
             <Card>
               <CardHeader>
-                <CardTitle>Crear cuenta</CardTitle>
+                <CardTitle>Create Account</CardTitle>
                 <CardDescription>
-                  Ingresa tus datos para crear una nueva cuenta.
+                  Enter your details to create a new account.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <form onSubmit={handleRegister}>
                   <div className="space-y-2">
                     <Label htmlFor="register-name" className="text-gray-400">
-                      Nombre completo
+                      Full Name
                     </Label>
                     <Input
                       id="register-name"
@@ -130,13 +142,13 @@ export function AuthForms() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-email" className="text-gray-400">
-                      Correo electrónico
+                      Email
                     </Label>
                     <Input
                       id="register-email"
                       name="email"
                       type="email"
-                      placeholder="tu@email.com"
+                      placeholder="your@email.com"
                       required
                     />
                   </div>
@@ -145,7 +157,7 @@ export function AuthForms() {
                       htmlFor="register-password"
                       className="text-gray-400"
                     >
-                      Contraseña
+                      Password
                     </Label>
                     <Input
                       id="register-password"
@@ -154,8 +166,12 @@ export function AuthForms() {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full mt-4">
-                    Registrarse
+                  <Button
+                    type="submit"
+                    className="w-full mt-4"
+                    disabled={loading}
+                  >
+                    {loading ? "Loading..." : "Register"}
                   </Button>
                 </form>
               </CardContent>
@@ -165,7 +181,7 @@ export function AuthForms() {
       </div>
 
       {errorMessage && (
-        <div className="bg-transparent border normal-case border-red-500 rounded-md p-4 max-w-md text-red-400">
+        <div className="bg-transparent border text-sm normal-case border-red-500 rounded-md p-4 max-w-md text-red-400">
           <ul>
             {errorMessage.map((msg: string, index: number) => (
               <li key={index}>- {msg}</li>

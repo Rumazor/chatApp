@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/component/theme-provider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Web Socket Practice",
+  title: "Chat App ",
   description: "A simple web socket practice using NestJS and NextJS",
 };
 

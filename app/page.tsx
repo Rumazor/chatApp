@@ -1,4 +1,5 @@
 import { AuthForms } from "@/components/component/auth";
+import { ServerStartupAlert } from "@/components/component/serverWakeUp";
 import { ThemeToggle } from "@/components/component/theme-toggle";
 import { Toaster } from "@/components/ui/toaster";
 
